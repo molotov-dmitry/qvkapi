@@ -6,8 +6,7 @@
 #include "qvkgroupinfo.h"
 #include "qvkpostinfo.h"
 
-typedef QPair<unsigned int, QString> QVkTagInfo;
-typedef QList<QVkTagInfo> QVkTagList;
+#include "qvkinfofave.h"
 
 /*!
  * \brief Класс для выполнения методов API ВКонтакте для работы со списком закладок
@@ -47,6 +46,13 @@ public:
     void requestFavePostList(unsigned int count = 0, unsigned int offset = 0);
 
     /*!
+     * \brief Запрос списка клипов, добавленных в закладки
+     * \param[in] count Количество закладок, которое нужно вернуть
+     * \param[in] offset Смещение, необходимое для выборки определенного подмножества закладок
+     */
+    void requestFaveClipList(unsigned int count = 0, unsigned int offset = 0);
+
+    /*!
      * \brief Уделение из закладок сообщества
      * \param[in] groupId Идентификатор сообщества, которое следует удалить из закладок
      */
@@ -64,6 +70,13 @@ public:
      * \param[in] postId Идентификатор записи на стене, которую следует удалить из закладок
      */
     void requestFavePostRemove(long ownerId,unsigned long postId);
+
+    /*!
+     * \brief Уделение клипа из закладок
+     * \param[in] ownerId Идентификатор владельца клипа, который следует удалить из закладок
+     * \param[in] postId Идентификатор клипа, который следует удалить из закладок
+     */
+    void requestFaveClipRemove(long ownerId,unsigned long postId);
 
 private slots:
 
@@ -89,6 +102,12 @@ private slots:
      * \brief Получение ответа на запрос API ВКонтакте
      * \param[in] document JSON-схема с ответом сервера
      */
+    void receiveFaveClipList(QJsonDocument document);
+
+    /*!
+     * \brief Получение ответа на запрос API ВКонтакте
+     * \param[in] document JSON-схема с ответом сервера
+     */
     void receiveFaveUserRemoved(QJsonDocument document);
 
     /*!
@@ -102,6 +121,12 @@ private slots:
      * \param[in] document JSON-схема с ответом сервера
      */
     void receiveFavePostRemoved(QJsonDocument document);
+
+    /*!
+     * \brief Получение ответа на запрос API ВКонтакте
+     * \param[in] document JSON-схема с ответом сервера
+     */
+    void receiveFaveClipRemoved(QJsonDocument document);
 
 signals:
 
@@ -130,6 +155,12 @@ signals:
                                QMap<unsigned long int, QVkTagList> favePostTagList);
 
     /*!
+     * \brief Список клипов, добавленных в закладки, успешно получен
+     * \param[out] faveClipInfoList Список клипов, добавленных в закладки
+     */
+    void faveClipListReceived(QList<VkFaveClipInfo> faveClipInfoList);
+
+    /*!
      * \brief Пользователь удалён из закладок
      */
     void faveUserRemoved();
@@ -143,6 +174,11 @@ signals:
      * \brief Запись удалена из закладок
      */
     void favePostRemoved();
+
+    /*!
+     * \brief Клип удалён из закладок
+     */
+    void faveClipRemoved();
 };
 
 #endif // QVKREQUESTFAVE_H

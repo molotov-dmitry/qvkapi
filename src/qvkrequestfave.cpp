@@ -108,6 +108,35 @@ void QVkRequestFave::requestFavePostList(unsigned int count, unsigned int offset
     sendRequest("fave.get", paramList);
 }
 
+void QVkRequestFave::requestFaveClipList(unsigned int count, unsigned int offset)
+{
+    disconnect(this, nullptr, this, nullptr);
+
+    //// Список параметров =====================================================
+
+    QParam paramList;
+
+    //// Идентификатор пользователя --------------------------------------------
+
+    if (count > 0)
+    {
+        paramList.insert("count", QString::number(count));
+    }
+
+    paramList.insert("offset", QString::number(offset));
+
+    //// Тип -------------------------------------------------------------------
+
+    paramList.insert("item_type", "clip");
+
+    //// =======================================================================
+
+    connect(this, &QVkRequest::replySuccess,
+            this, &QVkRequestFave::receiveFaveClipList);
+
+    sendRequest("fave.get", paramList);
+}
+
 void QVkRequestFave::requestFaveGroupRemove(long groupId)
 {
     disconnect(this, nullptr, this, nullptr);
@@ -167,6 +196,27 @@ void QVkRequestFave::requestFavePostRemove(long ownerId, unsigned long postId)
             this, &QVkRequestFave::receiveFavePostRemoved);
 
     sendRequest("fave.removePost", paramList);
+}
+
+void QVkRequestFave::requestFaveClipRemove(long ownerId, unsigned long postId)
+{
+    disconnect(this, nullptr, this, nullptr);
+
+    //// Список параметров =====================================================
+
+    QParam paramList;
+
+    //// Идентификатор сообщества ----------------------------------------------
+
+    paramList.insert("owner_id", QString::number(ownerId));
+    paramList.insert("id", QString::number(postId));
+
+    //// =======================================================================
+
+    connect(this, &QVkRequest::replySuccess,
+            this, &QVkRequestFave::receiveFaveClipRemoved);
+
+    sendRequest("fave.removeClip", paramList);
 }
 
 void QVkRequestFave::receiveFaveUserList(QJsonDocument document)
@@ -630,6 +680,76 @@ void QVkRequestFave::receiveFavePostList(QJsonDocument document)
     emit favePostListReceived(postInfoList, tags);
 }
 
+void QVkRequestFave::receiveFaveClipList(QJsonDocument document)
+{
+    QList<VkFaveClipInfo> clipInfoList;
+
+    QJsonObject response = document.object()["response"].toObject();
+
+    //// Iterate trough list ===================================================
+
+    QJsonArray items = response["items"].toArray();
+
+    foreach (const QJsonValue &value, items)
+    {
+        QJsonObject faveObject   = value.toObject();
+        QJsonObject object       = faveObject["clip"].toObject();
+        QJsonArray  tagsArray    = faveObject["tags"].toArray();
+
+        QString attachmentType = faveObject["type"].toString();
+
+        if (attachmentType == "clip")
+        {
+            VkFaveClipInfo clipInfo;
+
+            QJsonObject videoObject = faveObject["clip"].toObject();
+
+            clipInfo.id      = videoObject["id"].toVariant().toULongLong();
+            clipInfo.ownerId = videoObject["owner_id"].toVariant().toLongLong();
+
+            clipInfo.playerUrl = videoObject["player"].toString();
+
+            clipInfo.width = object["width"].toVariant().toUInt();
+            clipInfo.height = object["height"].toVariant().toUInt();
+
+            clipInfo.title = videoObject["title"].toString();
+            clipInfo.description = videoObject["description"].toString();
+            clipInfo.duration = videoObject["duration"].toVariant().toLongLong();
+
+            if (object.contains("date"))
+            {
+                uint timestamp = object["date"].toVariant().toUInt();
+                clipInfo.created = QDateTime::fromTime_t(timestamp);
+            }
+
+            if (object.contains("adding_date"))
+            {
+                uint timestamp = object["adding_date"].toVariant().toUInt();
+                clipInfo.uploaded = QDateTime::fromTime_t(timestamp);
+            }
+
+            //// Tags ----------------------------------------------------------
+
+            foreach (const QJsonValue &tag, tagsArray)
+            {
+                QVkTagInfo tagInfo;
+                tagInfo.first = tag.toObject()["id"].toVariant().toUInt();
+                tagInfo.second = tag.toObject()["name"].toString();
+
+                clipInfo.tags.append(tagInfo);
+            }
+
+            //// ---------------------------------------------------------------
+
+            clipInfoList.append(clipInfo);
+        }
+    }
+
+    //// =======================================================================
+
+    emit faveClipListReceived(clipInfoList);
+}
+
 void QVkRequestFave::receiveFaveUserRemoved(QJsonDocument document)
 {
     (void)document;
@@ -649,4 +769,11 @@ void QVkRequestFave::receiveFavePostRemoved(QJsonDocument document)
     (void)document;
 
     emit favePostRemoved();
+}
+
+void QVkRequestFave::receiveFaveClipRemoved(QJsonDocument document)
+{
+    (void)document;
+
+    emit faveClipRemoved();
 }
